@@ -1,0 +1,4 @@
+width: 1280
+height: 720
+fps: 30
+gstreamer_csi: "nvarguscamerasrc ! video/x-raw(memory:NVMM), width={width}, height={height}, framerate={fps}/1 ! nvvidconv ! video/x-raw, format=BGRx ! videoconvert ! video/x-raw, format=BGR ! appsink"

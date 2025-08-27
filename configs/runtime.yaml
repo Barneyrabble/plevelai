@@ -1,0 +1,5 @@
+model_path: "vision/models/best.pt"
+imgsz: 640
+conf: 0.25
+save_output: false
+output_path: "/tmp/plevelai_out.mp4"
