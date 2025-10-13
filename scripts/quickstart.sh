@@ -27,15 +27,13 @@ if [[ ! -f /etc/nv_tegra_release ]]; then
 fi
 
 # 2) Deps check (python, cv2, numpy, ultralytics). Install if missing.
-if ! python3 - <<'PY' >/dev/null 2>&1; then
-import sys
-try:
-  import cv2, numpy
-  from ultralytics import YOLO
-except Exception:
-  sys.exit(1)
+NEED_INSTALL=0
+python3 - <<'PY' >/dev/null 2>&1 || NEED_INSTALL=1
+import cv2, numpy
+from ultralytics import YOLO
 PY
-then
+
+if [[ "$NEED_INSTALL" == "1" ]]; then
   echo "ℹ️ Installing minimal dependencies (JetPack 6.2)…"
   "${ROOT_DIR}/scripts/install_jp62_min.sh"
 fi

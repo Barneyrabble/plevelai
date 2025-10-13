@@ -1,0 +1,30 @@
+# Stub geometry/config values. Replace with measurements from your rig.
+pan_tilt:
+  axis_height_m: 0.30         # distance from ground to tilt axis
+  tilt_offset_deg: 90.0       # 0° = level, 90° = straight down
+  tilt_direction: 1           # flip sign if your mechanics invert tilt
+  joint_limits_deg:
+    pan: [-180, 180]
+    tilt: [0, 180]            # clamp to hemisphere of motion
+
+projection:
+  # If you do not have a homography yet, the fallback scales pixel offsets into meters.
+  homography_path: null
+  fallback:
+    center_u_px: 640          # usually W/2; move if camera principal point shifts
+    scale_x_m_per_px: 0.0008  # meters per pixel horizontally
+    scale_y_m_per_px: 0.0008  # meters per pixel vertically (positive v pushes target further)
+    forward_offset_m: 0.50    # nominal distance from camera to weed row in meters
+
+camera_to_arm:
+  rotation_deg: 0.0           # yaw rotation between camera ground frame and pan axis frame
+  translation_m: [0.0, 0.0]   # XY offset from camera origin to pan axis (meters)
+
+target_plane_z_m: 0.0         # Z height (in arm frame) for the weeds/ground
+
+arduino:
+  port: "/dev/ttyACM0"
+  baudrate: 115200
+
+min_confidence: 0.6
+min_bbox_area_px: 50

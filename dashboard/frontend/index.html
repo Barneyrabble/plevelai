@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Weeder Control Center</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Weeder Control Center</h1>
+      <div class="status-pill" id="serial-pill">Serial: offline</div>
+    </header>
+    <main>
+      <section class="video-card">
+        <header>
+          <h2>Live Camera</h2>
+        </header>
+        <div class="stream-wrapper">
+          <img id="stream" src="/video" alt="Live stream" />
+        </div>
+      </section>
+      <section class="metrics">
+        <article class="panel" id="status-panel">
+          <header><h2>Runtime Status</h2></header>
+          <div class="stats-grid" id="stats-grid"></div>
+        </article>
+        <article class="panel" id="events-panel">
+          <header><h2>Recent Targets</h2></header>
+          <div class="table-list" id="events-list"></div>
+        </article>
+      </section>
+    </main>
+    <footer>
+      Dashboard powered by FastAPI · YOLOv8 · Arduino Nano R4 · Updated <span id="heartbeat">never</span>
+    </footer>
+    <script type="module" src="/static/app.js"></script>
+  </body>
+</html>
