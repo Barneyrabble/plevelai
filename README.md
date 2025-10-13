@@ -25,7 +25,8 @@ PlevelAI turns a Jetson-powered camera feed into commands for a pan/tilt laser h
 - `apps/` - entry points (`yolo_live`, `weeder_runtime`).
 - `configs/` - robot and calibration configuration (`robot.yaml`).
 - `control/` - host serial bridge plus Arduino Nano R4 starter firmware.
-- `dashboard/` - FastAPI backend + simple JS frontend for monitoring.
+- `dashboard_pkg/` - FastAPI backend + simple JS frontend for monitoring.
+- `dashboard` - convenience launcher for the dashboard server.
 - `docs/` - architecture and calibration notes.
 - `kinematics/` - pan/tilt inverse kinematics helpers.
 - `scripts/` - launch wrappers, installers, TRT exporter.
@@ -75,7 +76,7 @@ python -m apps.weeder_runtime.runtime --serial-port /dev/ttyACM0
 
 ## Dashboard (optional)
 ```bash
-./dashboard/start_server.sh
+./dashboard
 # Opens FastAPI on http://localhost:8000 with MJPEG stream at /video
 ```
 
