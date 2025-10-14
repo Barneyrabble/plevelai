@@ -1,28 +1,49 @@
-# Status Checkpoint — 2024-10-08 (late evening)
+# Status Checkpoint — 2024-10-13 (late evening)
 
-## What Works Right Now
-- Laser TTL is safe and predictable: the sketch boots inactive, honors a 500 ms pulse, and exposes runtime polarity/pulse controls via `config`.
-- Host launcher throttles serial traffic (default 0.2 s between sends) and only enqueues higher-confidence detections, so the queue drains and the laser pulses exactly once per command.
-- Pan motion is healthy after reseating the cable; the controller homes automatically and re-uses cached calibration values.
-- Latest firmware snapshot saved to `docs/firmware_snapshots/nano_r4_2024-10-08.ino` for quick rollback.
+The DM556 drivers and the Arduino UNO R4 WiFi now share a clean logic reference, and the production firmware has been reloaded with DM556-safe timing (15 microsecond step pulses + 20 microsecond DIR settle) while retaining the motion queue, homing logic, and laser gating.
 
-## Outstanding / To Investigate
-1. **Tilt travel is still short** – it jolts ~10° then rebounds. Suspect steps/deg calibration or mechanical backlash. Use the new runtime config to experiment with tilt scaling.
-   - Example: `echo '{"cmd":"config","axis":{"tilt":{"steps_per_deg":35.0}}}' > /dev/ttyACM0`
-   - Remember: any axis tweak forces a re-home and clears the motion queue.
-2. **Target firehose** – throttling helps, but the camera still produces lots of detections. Consider bumping the confidence gate in `launch` further (`SERIAL_SEND_INTERVAL` env var + `--conf 0.65`).
-3. **YOLO shutdown** – runs until you ^C; the exception spam on exit is harmless but noisy. Optionally wrap `launch` with graceful teardown if it becomes annoying.
+## System configuration: DM556 drivers + Arduino UNO R4 WiFi
+- PSU V+ -> DM556 +V
+- PSU COM -> DM556 GND
+- PSU COM <-> Arduino GND (shared reference)
+- Arduino GND -> blue rail on the breadboard (shared logic ground for PSU and both drivers)
+- Arduino 5 V pin -> red rail on the breadboard (shared +5 V logic reference)
+- Red rail feeds: both drivers' PUL+, DIR+, (optional) ENA+
+- PAN driver returns: PUL- -> Arduino D2 (STEP), DIR- -> Arduino D3 (DIR), ENA floating
+- TILT driver returns: PUL- -> Arduino D5 (STEP), DIR- -> Arduino D6 (DIR), ENA floating
 
-## Next Session Checklist
-- Run `launch` (optionally `SERIAL_SEND_INTERVAL=0.15 launch`) and watch `CTRL:` logs to confirm tilt calibration adjustments take effect.
-- Tune `axis.tilt.steps_per_deg` until physical travel matches commanded motion; note final value in this file once satisfied.
-- Verify pan/tilt both re-home cleanly after any config changes.
-- If time allows, script a calibration sweep (e.g., step through 0 → 90 deg tilt) to capture actual motion vs. command.
+### Breadboard rails summary
 
-## Quick Commands
-- `launch` → YOLO + serial loop with throttling (set `SERIAL_SEND_INTERVAL` env var to tweak cadence).
-- Manual config poke: `echo '{"cmd":"config","axis":{"reset":true}}' > /dev/ttyACM0` to revert axis gains.
-- Re-upload sketch: `arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi control/arduino/nano_r4` then `arduino-cli upload --fqbn arduino:renesas_uno:unor4wifi --port /dev/ttyACM0 control/arduino/nano_r4`.
-- View firmware snapshot: `docs/firmware_snapshots/nano_r4_2024-10-08.ino` (identical to what’s on the board).
+| Breadboard Rail | Signal       | Connected Components                        |
+| --------------- | ------------ | ------------------------------------------- |
+| Red (+)         | +5 V logic   | Arduino 5 V, all PUL+, DIR+, ENA+           |
+| Blue (-)        | Ground / COM | Arduino GND, PSU COM, all PUL-/DIR- returns |
 
-**Note:** Leave the rig powered but idle after closing `launch`; the controller stays in a known state and will auto-home once a new session starts.
+## Firmware changes (UNO R4 DM556 controller)
+- Pulse timing fixed at 15 microsecond STEP high/low with a 20 microsecond DIR settle, satisfying DM556 requirements.
+- Default steps-per-degree now use the 3200 pulses/rev DIP setting (≈8.89 steps/deg); adjust over JSON `config` if calibration drifts.
+- `motors_check` command sweeps pan/tilt and fires the laser twice so demos run even without the Jetson runtime.
+- Working snapshot saved at `control/arduino/nano_r4/working_sketch_2025-10-15.ino` for quick rollback.
+
+Key excerpts for quick reference:
+```cpp
+constexpr float PAN_STEPS_PER_DEG  = 3200.0f / 360.0f;
+constexpr float TILT_STEPS_PER_DEG = 3200.0f / 360.0f;
+constexpr uint16_t STEP_PULSE_HIGH_US = 15;
+constexpr uint16_t STEP_PULSE_LOW_US  = 15;
+constexpr uint16_t DIR_SETUP_DELAY_US = 20;
+```
+### Expected results
+- Both DM556 drivers show PWR solid, ALM off.
+- Each motor holds torque once the drivers are powered and the controller completes homing.
+- Commands from the runtime land smoothly; DM556 drivers now see 15 microsecond pulses with 20 microsecond direction settle so there are no missed steps at the configured speeds.
+
+### Troubleshooting checklist
+1. Measure between red and blue rails (~5.0 V expected).
+2. Verify continuity between blue rail and PSU COM (0 ohms).
+3. If motors hold but do not step, confirm driver microstep DIP (target 3200 pulses/rev) and probe the STEP pins for pulses.
+
+## Next session checklist
+- Upload the refreshed firmware (`control/arduino/nano_r4/nano_r4.ino`) and let it auto-home; verify telemetry reflects DM556 timing constants.
+- Kick off `MODEL=vision/models/best.pt ./launch` on the Jetson and watch `arduino-cli monitor` to confirm a steady stream of `dispatch` events.
+- Tweak `steps_per_deg` in `configs/robot.yaml` if the 3200 microstep assumption drifts, then re-enable laser firing and validate pulse timing at the DM556 inputs.

@@ -1,6 +1,6 @@
 # PlevelAI - Pan/Tilt Laser Weeder Module
 
-PlevelAI turns a Jetson-powered camera feed into commands for a pan/tilt laser head. It detects weeds with YOLO, projects detections onto the ground plane, solves pan/tilt angles, and streams motion commands to an Arduino Nano R4 that drives the steppers (and soon, the laser gate).
+PlevelAI turns a Jetson-powered camera feed into commands for a pan/tilt laser head. It detects weeds with YOLO, projects detections onto the ground plane, solves pan/tilt angles, and streams motion commands to an Arduino UNO R4 WiFi that drives the steppers (and soon, the laser gate).
 
 ## What it does today
 - Captures CSI or USB camera frames and runs a YOLO detector (`yolo_log_and_stream.py`).
@@ -12,7 +12,18 @@ PlevelAI turns a Jetson-powered camera feed into commands for a pan/tilt laser h
 - Jetson (Orin/NX class) or Linux laptop for inference + runtime.
 - CSI or USB camera aimed at the weeding zone.
 - Pan/tilt head driven by two NEMA 17 steppers.
-- Arduino Nano R4 WiFi (or compatible) receiving serial commands and translating degrees -> step pulses.
+- Arduino UNO R4 WiFi (or compatible) receiving serial commands and translating degrees -> step pulses.
+
+## DM556 + UNO R4 Wiring Baseline
+- PSU V+ -> DM556 +V; PSU COM -> DM556 GND.
+- Tie PSU COM to Arduino GND and fan it out on the breadboard blue rail so both drivers share logic ground.
+- Feed the breadboard red rail from the Arduino 5 V pin; jumper that rail to each driver's PUL+, DIR+, (optional) ENA+.
+- PAN driver returns: PUL- -> D2 (STEP), DIR- -> D3 (DIR); leave ENA floating.
+- TILT driver returns: PUL- -> D5 (STEP), DIR- -> D6 (DIR); leave ENA floating.
+- Breadboard rails: red = +5 V logic, blue = shared ground reference.
+- DM556 controller firmware lives at `control/arduino/nano_r4/nano_r4.ino`; it drives queued moves with 15 microsecond step pulses, 20 microsecond DIR settle, adds a `motors_check` demo command, and assumes the drivers are set to 3200 pulses/rev.
+- Quick sanity check: `echo '{"cmd":"motors_check"}' > /dev/ttyACM0` homes, sweeps both axes, and fires two laser pulses.
+
 
 ## Software pipeline at a glance
 1. YOLO inference produces detections and MJPEG stream (`make run` or `./launch`).
@@ -24,7 +35,7 @@ PlevelAI turns a Jetson-powered camera feed into commands for a pan/tilt laser h
 ## Repository layout
 - `apps/` - entry points (`yolo_live`, `weeder_runtime`).
 - `configs/` - robot and calibration configuration (`robot.yaml`).
-- `control/` - host serial bridge plus Arduino Nano R4 starter firmware.
+- `control/` - host serial bridge plus Arduino UNO R4 WiFi starter firmware.
 - `dashboard_pkg/` - FastAPI backend + simple JS frontend for monitoring.
 - `dashboard` - convenience launcher for the dashboard server.
 - `docs/` - architecture and calibration notes.
@@ -34,7 +45,7 @@ PlevelAI turns a Jetson-powered camera feed into commands for a pan/tilt laser h
 - `yolo_log_and_stream.py`, `yolo_to_log.py` - detection and logging utilities.
 
 ## Requirements
-**Hardware:** Jetson running JetPack 6.x (preferred) or a Linux machine with CUDA/GPU, CSI or USB camera, and the pan/tilt rig connected to an Arduino Nano R4 over USB.
+**Hardware:** Jetson running JetPack 6.x (preferred) or a Linux machine with CUDA/GPU, CSI or USB camera, and the pan/tilt rig connected to an Arduino UNO R4 WiFi over USB.
 
 **Software:** Python 3.8+, OpenCV, NumPy, `ultralytics`, FastAPI (for the dashboard), plus JetPack system dependencies. `scripts/quickstart.sh` will bootstrap the minimum packages on a Jetson.
 
@@ -91,7 +102,7 @@ The backend launches YOLO + IK internally using the same defaults as `./launch`,
 Update these files before running against hardware to ensure the runtime projects to the correct ground coordinates and respects the mechanical limits.
 
 ## Next milestones
-- Flesh out the Arduino Nano R4 firmware with motion planning and safety interlocks.
+- Extend the Arduino UNO R4 WiFi firmware with richer motion planning, soft limits, and safety interlocks.
 - Integrate laser gating once hardware is ready.
 - Harden the dashboard for remote operation and telemetry logging.
 
